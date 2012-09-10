@@ -27,8 +27,8 @@ module Database.Esqueleto.Internal.Language
   , JoinKind(..)
   , IsJoinKind(..)
   , PreprocessedFrom
-  , From
-  , FromPreprocess
+  , From(..)
+  , FromPreprocess(..)
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))

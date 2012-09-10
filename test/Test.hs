@@ -19,6 +19,7 @@ import Control.Monad.IO.Class (MonadIO(liftIO))
 import Control.Monad.Logger (MonadLogger(..), LogLevel(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Database.Esqueleto
+import Database.Esqueleto.Alternate
 import Database.Persist.Sqlite (withSqliteConn)
 import Database.Persist.TH
 import Language.Haskell.TH (Loc(..))
@@ -462,6 +463,42 @@ main = do
           liftIO $ ret `shouldBe` [ Entity p1k p1 { personAge = Just 3 }
                                   , Entity p3k p3 { personAge = Just 7 }
                                   , Entity p2k p2 { personAge = Just 0 } ]
+
+    describe "alternate syntax" $ do
+      it "works with SELECT, FROM, WHERE, ORDER_BY, LIMIT, OFFSET" $
+         run $ do
+           [_, p2e, _, _] <- mapM insert' [p1, p2, p3, p4]
+           ret <- sql $ SELECT $
+                        FROM $ \p -> do
+                        WHERE (E p :. PersonName `LIKE` (:%) :++ V "h" :++ (:%))
+                        ORDER_BY [ASC (E p :. PersonName)]
+                        LIMIT 1 >> OFFSET 1
+                        return p
+           liftIO $ ret `shouldBe` [p2e]
+
+      it "works for a many-to-many explicit join with LEFT OUTER JOINs" $
+        run $ do
+          p1e@(Entity p1k _) <- insert' p1
+          p2e@(Entity p2k _) <- insert' p2
+          p3e                <- insert' p3
+          p4e@(Entity p4k _) <- insert' p4
+          f12 <- insert' (Follow p1k p2k)
+          f21 <- insert' (Follow p2k p1k)
+          f42 <- insert' (Follow p4k p2k)
+          f11 <- insert' (Follow p1k p1k)
+          ret <- sql $ SELECT $
+                       FROM $ \(follower `LEFT_OUTER_JOIN`
+                                mfollows `LEFT_OUTER_JOIN` mfollowed) -> do
+                       ON $      E mfollowed :? PersonId  :== E mfollows :? FollowFollowed
+                       ON $ JUST (E follower :. PersonId) :== E mfollows :? FollowFollower
+                       ORDER_BY [ ASC (E  follower :. PersonName)
+                                , ASC (E mfollowed :? PersonName) ]
+                       return (follower, mfollows, mfollowed)
+          liftIO $ ret `shouldBe` [ (p1e, Just f11, Just p1e)
+                                  , (p1e, Just f12, Just p2e)
+                                  , (p4e, Just f42, Just p2e)
+                                  , (p3e, Nothing,  Nothing)
+                                  , (p2e, Just f21, Just p1e) ]
 
 
 ----------------------------------------------------------------------

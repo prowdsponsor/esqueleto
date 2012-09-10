@@ -239,8 +239,8 @@ instance Esqueleto SqlQuery SqlExpr SqlPersist where
         let ed = entityDef (getVal x)
         ident <- newIdentFor (entityDB ed)
         let ret   = EEntity ident
-            from_ = FromStart ident ed
-        return (EPreprocessedFrom ret from_)
+            from' = FromStart ident ed
+        return (EPreprocessedFrom ret from')
       getVal :: SqlQuery (SqlExpr (PreprocessedFrom (SqlExpr (Entity a)))) -> a
       getVal = error "Esqueleto/Sql/fromStart/getVal: never here"
 
@@ -248,19 +248,19 @@ instance Esqueleto SqlQuery SqlExpr SqlPersist where
     where
       maybelize :: SqlExpr (PreprocessedFrom (SqlExpr (Entity a)))
                 -> SqlExpr (PreprocessedFrom (SqlExpr (Maybe (Entity a))))
-      maybelize (EPreprocessedFrom ret from_) = EPreprocessedFrom (EMaybe ret) from_
+      maybelize (EPreprocessedFrom ret from') = EPreprocessedFrom (EMaybe ret) from'
 
   fromJoin (EPreprocessedFrom lhsRet lhsFrom)
            (EPreprocessedFrom rhsRet rhsFrom) = Q $ do
     let ret   = smartJoin lhsRet rhsRet
-        from_ = FromJoin lhsFrom             -- LHS
+        from' = FromJoin lhsFrom             -- LHS
                          (reifyJoinKind ret) -- JOIN
                          rhsFrom             -- RHS
                          Nothing             -- ON
-    return (EPreprocessedFrom ret from_)
+    return (EPreprocessedFrom ret from')
 
-  fromFinish (EPreprocessedFrom ret from_) = Q $ do
-    W.tell mempty { sdFromClause = [from_] }
+  fromFinish (EPreprocessedFrom ret from') = Q $ do
+    W.tell mempty { sdFromClause = [from'] }
     return ret
 
   where_ expr = Q $ W.tell mempty { sdWhereClause = Where expr }

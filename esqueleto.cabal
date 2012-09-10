@@ -52,6 +52,7 @@ source-repository head
 library
   exposed-modules:
     Database.Esqueleto
+    Database.Esqueleto.Alternate
     Database.Esqueleto.Internal.Language
     Database.Esqueleto.Internal.Sql
   build-depends:
