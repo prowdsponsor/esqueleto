@@ -470,8 +470,8 @@ main = do
            [_, p2e, _, _] <- mapM insert' [p1, p2, p3, p4]
            ret <- sql $ SELECT $
                         FROM $ \p -> do
-                        WHERE (E p :. PersonName `LIKE` (:%) :++ V "h" :++ (:%))
-                        ORDER_BY [ASC (E p :. PersonName)]
+                        WHERE (p :. PersonName `LIKE` (:%) :++ V "h" :++ (:%))
+                        ORDER_BY [ASC (p :. PersonName)]
                         LIMIT 1 >> OFFSET 1
                         return p
            liftIO $ ret `shouldBe` [p2e]
@@ -489,10 +489,10 @@ main = do
           ret <- sql $ SELECT $
                        FROM $ \(follower `LEFT_OUTER_JOIN`
                                 mfollows `LEFT_OUTER_JOIN` mfollowed) -> do
-                       ON $      E mfollowed :? PersonId  :== E mfollows :? FollowFollowed
-                       ON $ JUST (E follower :. PersonId) :== E mfollows :? FollowFollower
-                       ORDER_BY [ ASC (E  follower :. PersonName)
-                                , ASC (E mfollowed :? PersonName) ]
+                       ON $      mfollowed :? PersonId  :== mfollows :? FollowFollowed
+                       ON $ JUST (follower :. PersonId) :== mfollows :? FollowFollower
+                       ORDER_BY [ ASC ( follower :. PersonName)
+                                , ASC (mfollowed :? PersonName) ]
                        return (follower, mfollows, mfollowed)
           liftIO $ ret `shouldBe` [ (p1e, Just f11, Just p1e)
                                   , (p1e, Just f12, Just p2e)
