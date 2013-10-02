@@ -742,13 +742,12 @@ toRawSql mode qt (conn, firstIdentState) query =
                groupByClause
                havingClause
                orderByClauses
-               (Limit ml mo) = sd
+               limitClause = sd
       -- Pass the finalIdentState (containing all identifiers
       -- that were used) to the subsequent calls.  This ensures
       -- that no name clashes will occur on subqueries that may
       -- appear on the expressions below.
       info = (conn, finalIdentState)
-      limitRaw = connLimitOffset conn (maybe 0 fromIntegral ml,maybe 0 fromIntegral mo) (not . T.null . builderToText . fst $ makeOrderBy info orderByClauses) ""
   in mconcat
       [ makeInsert  qt ret
       , makeSelect  info mode ret
@@ -758,8 +757,7 @@ toRawSql mode qt (conn, firstIdentState) query =
       , makeGroupBy info groupByClause
       , makeHaving  info havingClause
       , makeOrderBy info orderByClauses
-      -- , makeLimit   info limitClause
-      , (TLB.fromText limitRaw,mempty)
+      , makeLimit   info limitClause orderByClauses
       ]
 
 
@@ -871,6 +869,12 @@ makeOrderBy info os = first ("\nORDER BY " <>) $ uncommas' (map mk os)
     mk (EOrderBy t (ERaw p f)) = first ((<> orderByType t) . parensM p) (f info)
     orderByType ASC  = " ASC"
     orderByType DESC = " DESC"
+
+makeLimit :: IdentInfo -> LimitClause -> [OrderByClause] -> (TLB.Builder, [PersistValue])
+makeLimit info@(conn,_) (Limit ml      mo) orderByClauses = 
+    let limitRaw = connLimitOffset conn limitoffsetValues (not . T.null . builderToText . fst $ makeOrderBy info orderByClauses) ""
+        limitoffsetValues = (maybe 0 fromIntegral ml,maybe 0 fromIntegral mo)
+    in (TLB.fromText limitRaw,mempty)
 
 parens :: TLB.Builder -> TLB.Builder
 parens b = "(" <> (b <> ")")
