@@ -6,6 +6,7 @@
            , MultiParamTypeClasses
            , OverloadedStrings
            , UndecidableInstances
+           , CPP
  #-}
 -- | This is an internal module, anything exported by this module
 -- may change without a major version bump.  Please use only
@@ -871,10 +872,28 @@ makeOrderBy info os = first ("\nORDER BY " <>) $ uncommas' (map mk os)
     orderByType DESC = " DESC"
 
 makeLimit :: IdentInfo -> LimitClause -> [OrderByClause] -> (TLB.Builder, [PersistValue])
+#if MIN_VERSION_persistent(1,2,4)
 makeLimit info@(conn,_) (Limit ml      mo) orderByClauses = 
     let limitRaw = connLimitOffset conn limitoffsetValues (not . T.null . builderToText . fst $ makeOrderBy info orderByClauses) ""
         limitoffsetValues = (maybe 0 fromIntegral ml,maybe 0 fromIntegral mo)
     in (TLB.fromText limitRaw,mempty)
+#else
+makeLimit _    (Limit Nothing Nothing)  _ = mempty
+makeLimit _    (Limit Nothing (Just 0)) _ = mempty
+makeLimit info (Limit ml      mo)       _ = (ret, mempty)
+  where
+    ret = TLB.singleton '\n' <> (limitTLB <> offsetTLB)
+
+    limitTLB =
+      case ml of
+        Just l  -> "LIMIT " <> TLBI.decimal l
+        Nothing -> TLB.fromText (connNoLimit $ fst info)
+
+    offsetTLB =
+      case mo of
+        Just o  -> " OFFSET " <> TLBI.decimal o
+        Nothing -> mempty
+#endif
 
 parens :: TLB.Builder -> TLB.Builder
 parens b = "(" <> (b <> ")")
