@@ -1016,11 +1016,11 @@ fromEMaybe = const Proxy
 
 -- | You may return any single value (i.e. a single column) from
 -- a 'select' query.
-instance PersistField a => SqlSelect (SqlExpr (Value a)) (Value a) where
+instance PersistField a => SqlSelect (SqlExpr (Value a)) a where
   sqlSelectCols info (ERaw p f) = let (b, vals) = f info
                                   in (parensM p b, vals)
   sqlSelectColCount = const 1
-  sqlSelectProcessRow _ [pv] = Value <$> fromPersistValue pv
+  sqlSelectProcessRow _ [pv] = fromPersistValue pv
   sqlSelectProcessRow _ _    = Left "SqlSelect (Value a): wrong number of columns."
 
 

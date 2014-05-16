@@ -72,12 +72,12 @@ main = do
       it "works for a single value" $
         run $ do
           ret <- select $ return $ (val 3 :: SqlExpr (Value Int))
-          liftIO $ ret `shouldBe` [ Value 3 ]
+          liftIO $ ret `shouldBe` [ 3 ]
 
       it "works for a pair of a single value and ()" $
         run $ do
           ret <- select $ return (val 3 :: SqlExpr (Value Int), ())
-          liftIO $ ret `shouldBe` [ (Value 3, ()) ]
+          liftIO $ ret `shouldBe` [ (3, ()) ]
 
       it "works for a single ()" $
         run $ do
@@ -87,7 +87,7 @@ main = do
       it "works for a single NULL value" $
         run $ do
           ret <- select $ return $ (nothing :: SqlExpr (Value (Maybe Int)))
-          liftIO $ ret `shouldBe` [ Value Nothing ]
+          liftIO $ ret `shouldBe` [ Nothing ]
 
     describe "select/from" $ do
       it "works for a simple example" $
@@ -158,8 +158,8 @@ main = do
           ret <- select $
                  from $ \(p :: SqlExpr (Entity Person)) ->
                  return (p ^. PersonId, p ^. PersonName)
-          liftIO $ ret `shouldBe` [ (Value p1k, Value (personName p1))
-                                  , (Value p2k, Value (personName p2)) ]
+          liftIO $ ret `shouldBe` [ (p1k, personName p1)
+                                  , (p2k, personName p2) ]
 
       it "works for a simple projection with a simple implicit self-join" $
         run $ do
@@ -170,10 +170,10 @@ main = do
                  let _ = pa `asTypeOf` pb :: SqlExpr (Entity Person)
                  return (pa ^. PersonName, pb ^. PersonName)
           liftIO $ ret `shouldSatisfy` sameElementsAs
-                                  [ (Value (personName p1), Value (personName p1))
-                                  , (Value (personName p1), Value (personName p2))
-                                  , (Value (personName p2), Value (personName p1))
-                                  , (Value (personName p2), Value (personName p2)) ]
+                                  [ (personName p1, personName p1)
+                                  , (personName p1, personName p2)
+                                  , (personName p2, personName p1)
+                                  , (personName p2, personName p2) ]
 
       it "works with many kinds of LIMITs and OFFSETs" $
         run $ do
@@ -328,11 +328,11 @@ main = do
                  from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ sum_ (p ^. PersonAge)
 #if   defined(WITH_POSTGRESQL)
-          liftIO $ ret `shouldBe` [ Value $ Just (36 + 17 + 17 :: Rational ) ]
+          liftIO $ ret `shouldBe` [ Just (36 + 17 + 17 :: Rational ) ]
 #elif defined(WITH_MYSQL)
-          liftIO $ ret `shouldBe` [ Value $ Just (36 + 17 + 17 :: Double ) ]
+          liftIO $ ret `shouldBe` [ Just (36 + 17 + 17 :: Double ) ]
 #else
-          liftIO $ ret `shouldBe` [ Value $ Just (36 + 17 + 17 :: Int) ]
+          liftIO $ ret `shouldBe` [ Just (36 + 17 + 17 :: Int) ]
 #endif
 
       it "works with avg_" $
@@ -344,7 +344,7 @@ main = do
           ret <- select $
                  from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ avg_ (p ^. PersonAge)
-          liftIO $ ret `shouldBe` [ Value $ Just ((36 + 17 + 17) / 3 :: Double) ]
+          liftIO $ ret `shouldBe` [ Just ((36 + 17 + 17) / 3 :: Double) ]
 
       it "works with min_" $
         run $ do
@@ -355,7 +355,7 @@ main = do
           ret <- select $
                  from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ min_ (p ^. PersonAge)
-          liftIO $ ret `shouldBe` [ Value $ Just (17 :: Int) ]
+          liftIO $ ret `shouldBe` [ Just (17 :: Int) ]
 
       it "works with max_" $
         run $ do
@@ -366,7 +366,7 @@ main = do
           ret <- select $
                  from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ max_ (p ^. PersonAge)
-          liftIO $ ret `shouldBe` [ Value $ Just (36 :: Int) ]
+          liftIO $ ret `shouldBe` [ Just (36 :: Int) ]
 
       it "works with random_" $
         run $ do
@@ -380,7 +380,7 @@ main = do
       it "works with round_" $
         run $ do
           ret <- select $ return (round_ $ val (16.2 :: Double) :: SqlExpr (Value Double))
-          liftIO $ ret `shouldBe` [ Value 16 ]
+          liftIO $ ret `shouldBe` [ 16 ]
 
       it "works with isNothing" $
         run $ do
@@ -529,7 +529,7 @@ main = do
                                  return (p ^. PersonName)
                          ]
                  return (b ^. BlogPostId)
-          liftIO $ ret `shouldBe` (Value <$> [b2k, b3k, b4k, b1k])
+          liftIO $ ret `shouldBe` [b2k, b3k, b4k, b1k]
 
       it "works with asc random_" $
         run $ do
@@ -561,7 +561,7 @@ main = do
                  let title = b ^. BlogPostTitle
                  orderBy [asc title]
                  return title
-          liftIO $ ret `shouldBe` [ Value t1, Value t2, Value t3 ]
+          liftIO $ ret `shouldBe` [ t1, t2, t3 ]
 
     describe "text functions" $
       it "like, (%) and (++.) work on a simple example" $
@@ -676,9 +676,9 @@ main = do
                  let cnt = count (b ^. BlogPostId)
                  orderBy [ asc cnt ]
                  return (p, cnt)
-          liftIO $ ret `shouldBe` [ (Entity p2k p2, Value (0 :: Int))
-                                  , (Entity p1k p1, Value 3)
-                                  , (Entity p3k p3, Value 7) ]
+          liftIO $ ret `shouldBe` [ (Entity p2k p2, 0 :: Int)
+                                  , (Entity p1k p1, 3)
+                                  , (Entity p3k p3, 7) ]
 
       it "GROUP BY works with HAVING" $
         run $ do
@@ -695,8 +695,8 @@ main = do
                  having (cnt >. (val 0))
                  orderBy [ asc cnt ]
                  return (p, cnt)
-          liftIO $ ret `shouldBe` [ (Entity p1k p1, Value (3 :: Int))
-                                  , (Entity p3k p3, Value 7) ]
+          liftIO $ ret `shouldBe` [ (Entity p1k p1, 3 :: Int)
+                                  , (Entity p3k p3, 7) ]
 
     describe "lists of values" $ do
       it "IN works for valList" $
@@ -798,7 +798,7 @@ main = do
           ret <- select $
                  from $ \(_::(SqlExpr (Entity BlogPost))) ->
                  return (countRows :: SqlExpr (Value Int))
-          liftIO $ ret `shouldBe` [Value 3]
+          liftIO $ ret `shouldBe` [3]
 
     describe "rand works" $ do
       it "returns result in random order" $
@@ -812,10 +812,10 @@ main = do
             _ <- insert $ Person "Mark"  Nothing
             _ <- insert $ Person "Sarah" Nothing
             insert $ Person "Paul"  Nothing
-          ret1 <- fmap (map unValue) $ select $ from $ \(p :: SqlExpr (Entity Person)) -> do
+          ret1 <- select $ from $ \(p :: SqlExpr (Entity Person)) -> do
                     orderBy [rand]
                     return (p ^. PersonId)
-          ret2 <- fmap (map unValue) $ select $ from $ \(p :: SqlExpr (Entity Person)) -> do
+          ret2 <- select $ from $ \(p :: SqlExpr (Entity Person)) -> do
                     orderBy [rand]
                     return (p ^. PersonId)
 
