@@ -71,12 +71,12 @@ main = do
     describe "select" $ do
       it "works for a single value" $
         run $ do
-          ret <- select $ return $ (val 3 :: SqlExpr (Value Int))
+          ret <- select $ return $ (val 3 :: SqlExpr Int)
           liftIO $ ret `shouldBe` [ 3 ]
 
       it "works for a pair of a single value and ()" $
         run $ do
-          ret <- select $ return (val 3 :: SqlExpr (Value Int), ())
+          ret <- select $ return (val 3 :: SqlExpr Int, ())
           liftIO $ ret `shouldBe` [ (3, ()) ]
 
       it "works for a single ()" $
@@ -86,7 +86,7 @@ main = do
 
       it "works for a single NULL value" $
         run $ do
-          ret <- select $ return $ (nothing :: SqlExpr (Value (Maybe Int)))
+          ret <- select $ return $ (nothing :: SqlExpr (Maybe Int))
           liftIO $ ret `shouldBe` [ Nothing ]
 
     describe "select/from" $ do
@@ -373,13 +373,13 @@ main = do
 #if defined(WITH_POSTGRESQL) || defined(WITH_MYSQL)
           _ <- select $ return (random_ :: SqlExpr (Value Double))
 #else
-          _ <- select $ return (random_ :: SqlExpr (Value Int))
+          _ <- select $ return (random_ :: SqlExpr Int)
 #endif
           return ()
 
       it "works with round_" $
         run $ do
-          ret <- select $ return (round_ $ val (16.2 :: Double) :: SqlExpr (Value Double))
+          ret <- select $ return (round_ $ val (16.2 :: Double) :: SqlExpr Double)
           liftIO $ ret `shouldBe` [ 16 ]
 
       it "works with isNothing" $
@@ -542,8 +542,8 @@ main = do
             replicateM 11 $
             select $
             from $ \p -> do
-            orderBy [asc (random_ :: SqlExpr (Value Double))]
-            return (p ^. PersonId :: SqlExpr (Value PersonId))
+            orderBy [asc (random_ :: SqlExpr Double)]
+            return (p ^. PersonId :: SqlExpr PersonId)
           -- There are 2^4 = 16 possible orderings.  The chance
           -- of 11 random samplings returning the same ordering
           -- is 1/2^40, so this test should pass almost everytime.
@@ -797,7 +797,7 @@ main = do
             return $ BlogPost <# val "FakePost" <&> (p ^. PersonId)
           ret <- select $
                  from $ \(_::(SqlExpr (Entity BlogPost))) ->
-                 return (countRows :: SqlExpr (Value Int))
+                 return (countRows :: SqlExpr Int)
           liftIO $ ret `shouldBe` [3]
 
     describe "rand works" $ do

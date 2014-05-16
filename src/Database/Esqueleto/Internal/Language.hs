@@ -15,8 +15,6 @@ module Database.Esqueleto.Internal.Language
   ( -- * The pretty face
     Esqueleto(..)
   , from
-  , Value(..)
-  , unValue
   , ValueList(..)
   , SomeValue(..)
   , ToSomeValues(..)
@@ -82,7 +80,7 @@ class (Functor query, Applicative query, Monad query) =>
     -> query a
 
   -- | @WHERE@ clause: restrict the query's result.
-  where_ :: expr (Value Bool) -> query ()
+  where_ :: expr Bool -> query ()
 
   -- | @ON@ clause: restrict the a @JOIN@'s result.  The @ON@
   -- clause will be applied to the /last/ @JOIN@ that does not
@@ -131,7 +129,7 @@ class (Functor query, Applicative query, Monad query) =>
   -- If the order was /not/ reversed, then @test2@ would be
   -- broken: @query1@'s 'on' would refer to @query2@'s
   -- 'LeftOuterJoin'.
-  on :: expr (Value Bool) -> query ()
+  on :: expr Bool -> query ()
 
   -- | @GROUP BY@ clause. You can enclose multiple columns
   -- in a tuple.
@@ -145,7 +143,7 @@ class (Functor query, Applicative query, Monad query) =>
   --
   -- With groupBy you can sort by aggregate functions, like so (we
   -- used @let@ to restrict the more general `countRows` to
-  -- @SqlExpr (Value Int)@ to avoid ambiguity):
+  -- @SqlExpr Int@ to avoid ambiguity):
   --
   -- @
   -- r \<- select $ from \\(foo ``InnerJoin`` bar) -> do
@@ -154,7 +152,7 @@ class (Functor query, Applicative query, Monad query) =>
   --   let countRows' = countRows
   --   orderBy [asc countRows']
   --   return (bar ^. BarName, countRows')
-  -- forM_ r $ \\((Value name), (Value count)) -> do
+  -- forM_ r $ \\(name, count) -> do
   --   print name
   --   print (count :: Int)
   -- @
@@ -164,10 +162,10 @@ class (Functor query, Applicative query, Monad query) =>
   orderBy :: [expr OrderBy] -> query ()
 
   -- | Ascending order of this field or expression.
-  asc :: PersistField a => expr (Value a) -> expr OrderBy
+  asc :: PersistField a => expr a -> expr OrderBy
 
   -- | Descending order of this field or expression.
-  desc :: PersistField a => expr (Value a) -> expr OrderBy
+  desc :: PersistField a => expr a -> expr OrderBy
 
   -- | @LIMIT@.  Limit the number of returned rows.
   limit :: Int64 -> query ()
@@ -183,78 +181,78 @@ class (Functor query, Applicative query, Monad query) =>
   -- | @HAVING@.
   --
   -- /Since: 1.2.2/
-  having :: expr (Value Bool) -> query ()
+  having :: expr Bool -> query ()
 
   -- | Execute a subquery @SELECT@ in an expression.  Returns a
   -- simple value so should be used only when the @SELECT@ query
   -- is guaranteed to return just one row.
-  sub_select :: PersistField a => query (expr (Value a)) -> expr (Value a)
+  sub_select :: PersistField a => query (expr a) -> expr a
 
   -- | Same as 'sub_select' but using @SELECT DISTINCT@.
-  sub_selectDistinct :: PersistField a => query (expr (Value a)) -> expr (Value a)
+  sub_selectDistinct :: PersistField a => query (expr a) -> expr a
 
   -- | Project a field of an entity.
   (^.) :: (PersistEntity val, PersistField typ) =>
-          expr (Entity val) -> EntityField val typ -> expr (Value typ)
+          expr (Entity val) -> EntityField val typ -> expr typ
 
   -- | Project a field of an entity that may be null.
   (?.) :: (PersistEntity val, PersistField typ) =>
-          expr (Maybe (Entity val)) -> EntityField val typ -> expr (Value (Maybe typ))
+          expr (Maybe (Entity val)) -> EntityField val typ -> expr (Maybe typ)
 
   -- | Lift a constant value from Haskell-land to the query.
-  val  :: PersistField typ => typ -> expr (Value typ)
+  val  :: PersistField typ => typ -> expr typ
 
   -- | @IS NULL@ comparison.
-  isNothing :: PersistField typ => expr (Value (Maybe typ)) -> expr (Value Bool)
+  isNothing :: PersistField typ => expr (Maybe typ) -> expr Bool
 
   -- | Analogous to 'Just', promotes a value of type @typ@ into
   -- one of type @Maybe typ@.  It should hold that @val . Just
   -- === just . val@.
-  just :: expr (Value typ) -> expr (Value (Maybe typ))
+  just :: expr typ -> expr (Maybe typ)
 
   -- | @NULL@ value.
-  nothing :: expr (Value (Maybe typ))
+  nothing :: expr (Maybe typ)
 
   -- | Join nested 'Maybe's in a 'Value' into one. This is useful when
   -- calling aggregate functions on nullable fields.
-  joinV :: expr (Value (Maybe (Maybe typ))) -> expr (Value (Maybe typ))
+  joinV :: expr (Maybe (Maybe typ)) -> expr (Maybe typ)
 
   -- | @COUNT(*)@ value.
-  countRows :: Num a => expr (Value a)
+  countRows :: Num a => expr a
 
   -- | @COUNT@.
-  count :: (Num a) => expr (Value typ) -> expr (Value a)
+  count :: (Num a) => expr typ -> expr a
 
-  not_ :: expr (Value Bool) -> expr (Value Bool)
+  not_ :: expr Bool -> expr Bool
 
-  (==.) :: PersistField typ => expr (Value typ) -> expr (Value typ) -> expr (Value Bool)
-  (>=.) :: PersistField typ => expr (Value typ) -> expr (Value typ) -> expr (Value Bool)
-  (>.)  :: PersistField typ => expr (Value typ) -> expr (Value typ) -> expr (Value Bool)
-  (<=.) :: PersistField typ => expr (Value typ) -> expr (Value typ) -> expr (Value Bool)
-  (<.)  :: PersistField typ => expr (Value typ) -> expr (Value typ) -> expr (Value Bool)
-  (!=.) :: PersistField typ => expr (Value typ) -> expr (Value typ) -> expr (Value Bool)
+  (==.) :: PersistField typ => expr typ -> expr typ -> expr Bool
+  (>=.) :: PersistField typ => expr typ -> expr typ -> expr Bool
+  (>.)  :: PersistField typ => expr typ -> expr typ -> expr Bool
+  (<=.) :: PersistField typ => expr typ -> expr typ -> expr Bool
+  (<.)  :: PersistField typ => expr typ -> expr typ -> expr Bool
+  (!=.) :: PersistField typ => expr typ -> expr typ -> expr Bool
 
-  (&&.) :: expr (Value Bool) -> expr (Value Bool) -> expr (Value Bool)
-  (||.) :: expr (Value Bool) -> expr (Value Bool) -> expr (Value Bool)
+  (&&.) :: expr Bool -> expr Bool -> expr Bool
+  (||.) :: expr Bool -> expr Bool -> expr Bool
 
-  (+.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
-  (-.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
-  (/.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
-  (*.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
+  (+.)  :: PersistField a => expr a -> expr a -> expr a
+  (-.)  :: PersistField a => expr a -> expr a -> expr a
+  (/.)  :: PersistField a => expr a -> expr a -> expr a
+  (*.)  :: PersistField a => expr a -> expr a -> expr a
 
 
-  random_  :: (PersistField a, Num a) => expr (Value a)
-  round_   :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
-  ceiling_ :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
-  floor_   :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
+  random_  :: (PersistField a, Num a) => expr a
+  round_   :: (PersistField a, Num a, PersistField b, Num b) => expr a -> expr b
+  ceiling_ :: (PersistField a, Num a, PersistField b, Num b) => expr a -> expr b
+  floor_   :: (PersistField a, Num a, PersistField b, Num b) => expr a -> expr b
 
-  sum_     :: (PersistField a, PersistField b) => expr (Value a) -> expr (Value (Maybe b))
-  min_     :: (PersistField a) => expr (Value a) -> expr (Value (Maybe a))
-  max_     :: (PersistField a) => expr (Value a) -> expr (Value (Maybe a))
-  avg_     :: (PersistField a, PersistField b) => expr (Value a) -> expr (Value (Maybe b))
+  sum_     :: (PersistField a, PersistField b) => expr a -> expr (Maybe b)
+  min_     :: (PersistField a) => expr a -> expr (Maybe a)
+  max_     :: (PersistField a) => expr a -> expr (Maybe a)
+  avg_     :: (PersistField a, PersistField b) => expr a -> expr (Maybe b)
 
   -- | @LIKE@ operator.
-  like :: (PersistField s, IsString s) => expr (Value s) -> expr (Value s) -> expr (Value Bool)
+  like :: (PersistField s, IsString s) => expr s -> expr s -> expr Bool
   -- | The string @'%'@.  May be useful while using 'like' and
   -- concatenation ('concat_' or '++.', depending on your
   -- database).  Note that you always to type the parenthesis,
@@ -263,30 +261,30 @@ class (Functor query, Applicative query, Monad query) =>
   -- @
   -- name ``'like'`` (%) ++. val "John" ++. (%)
   -- @
-  (%) :: (PersistField s, IsString s) => expr (Value s)
+  (%) :: (PersistField s, IsString s) => expr s
   -- | The @CONCAT@ function with a variable number of
   -- parameters.  Supported by MySQL and PostgreSQL.
-  concat_ :: (PersistField s, IsString s) => [expr (Value s)] -> expr (Value s)
+  concat_ :: (PersistField s, IsString s) => [expr s] -> expr s
   -- | The @||@ string concatenation operator (named after
   -- Haskell's '++' in order to avoid naming clash with '||.').
   -- Supported by SQLite and PostgreSQL.
-  (++.) :: (PersistField s, IsString s) => expr (Value s) -> expr (Value s) -> expr (Value s)
+  (++.) :: (PersistField s, IsString s) => expr s -> expr s -> expr s
 
   -- | Execute a subquery @SELECT@ in an expression.  Returns a
   -- list of values.
-  subList_select :: PersistField a => query (expr (Value a)) -> expr (ValueList a)
+  subList_select :: PersistField a => query (expr a) -> expr (ValueList a)
 
   -- | Same as 'sublist_select' but using @SELECT DISTINCT@.
-  subList_selectDistinct :: PersistField a => query (expr (Value a)) -> expr (ValueList a)
+  subList_selectDistinct :: PersistField a => query (expr a) -> expr (ValueList a)
 
   -- | Lift a list of constant value from Haskell-land to the query.
   valList :: PersistField typ => [typ] -> expr (ValueList typ)
 
   -- | @IN@ operator.
-  in_ :: PersistField typ => expr (Value typ) -> expr (ValueList typ) -> expr (Value Bool)
+  in_ :: PersistField typ => expr typ -> expr (ValueList typ) -> expr Bool
 
   -- | @NOT IN@ operator.
-  notIn :: PersistField typ => expr (Value typ) -> expr (ValueList typ) -> expr (Value Bool)
+  notIn :: PersistField typ => expr typ -> expr (ValueList typ) -> expr Bool
 
   -- | @EXISTS@ operator.  For example:
   --
@@ -298,27 +296,27 @@ class (Functor query, Applicative query, Monad query) =>
   --          where_ (post ^. BlogPostAuthorId ==. person ^. PersonId)
   -- return person
   -- @
-  exists :: query () -> expr (Value Bool)
+  exists :: query () -> expr Bool
 
   -- | @NOT EXISTS@ operator.
-  notExists :: query () -> expr (Value Bool)
+  notExists :: query () -> expr Bool
 
   -- | @SET@ clause used on @UPDATE@s.  Note that while it's not
   -- a type error to use this function on a @SELECT@, it will
   -- most certainly result in a runtime error.
   set :: PersistEntity val => expr (Entity val) -> [expr (Update val)] -> query ()
 
-  (=.)  :: (PersistEntity val, PersistField typ) => EntityField val typ -> expr (Value typ) -> expr (Update val)
-  (+=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr (Value a) -> expr (Update val)
-  (-=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr (Value a) -> expr (Update val)
-  (*=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr (Value a) -> expr (Update val)
-  (/=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr (Value a) -> expr (Update val)
+  (=.)  :: (PersistEntity val, PersistField typ) => EntityField val typ -> expr typ -> expr (Update val)
+  (+=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr a -> expr (Update val)
+  (-=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr a -> expr (Update val)
+  (*=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr a -> expr (Update val)
+  (/=.) :: (PersistEntity val, PersistField a) => EntityField val a -> expr a -> expr (Update val)
 
   -- | Apply a 'PersistField' constructor to @expr Value@ arguments.
-  (<#) :: (a -> b) -> expr (Value a) -> expr (Insertion b)
+  (<#) :: (a -> b) -> expr a -> expr (Insertion b)
 
   -- | Apply extra @expr Value@ arguments to a 'PersistField' constructor
-  (<&>) :: expr (Insertion (a -> b)) -> expr (Value a) -> expr (Insertion b)
+  (<&>) :: expr (Insertion (a -> b)) -> expr a -> expr (Insertion b)
 
 
 -- Fixity declarations
@@ -331,20 +329,6 @@ infixr 3 &&., =., +=., -=., *=., /=.
 infixr 2 ||., `InnerJoin`, `CrossJoin`, `LeftOuterJoin`, `RightOuterJoin`, `FullOuterJoin`, `like`
 
 
--- | A single value (as opposed to a whole entity).  You may use
--- @('^.')@ or @('?.')@ to get a 'Value' from an 'Entity'.
-data Value a = Value a deriving (Eq, Ord, Show, Typeable)
--- Note: because of GHC bug #6124 we use @data@ instead of @newtype@.
--- <https://ghc.haskell.org/trac/ghc/ticket/6124>
-
-
--- | Unwrap a 'Value'.
---
--- /Since: 1.4.1/
-unValue :: Value a -> a
-unValue (Value a) = a
-
-
 -- | A list of single values.  There's a limited set of functions
 -- able to work with this data type (such as 'subList_select',
 -- 'valList', 'in_' and 'exists').
@@ -353,9 +337,9 @@ data ValueList a = ValueList a deriving (Eq, Ord, Show, Typeable)
 -- <https://ghc.haskell.org/trac/ghc/ticket/6124>
 
 
--- | A wrapper type for for any @expr (Value a)@ for all a.
+-- | A wrapper type for for any @expr a@ for all a.
 data SomeValue expr where
-  SomeValue :: Esqueleto query expr backend => expr (Value a) -> SomeValue expr
+  SomeValue :: Esqueleto query expr backend => expr a -> SomeValue expr
 
 -- | A class of things that can be converted into a list of SomeValue. It has
 -- instances for tuples and is the reason why groupBy can take tuples, like

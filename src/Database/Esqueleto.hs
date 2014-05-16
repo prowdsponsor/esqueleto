@@ -50,8 +50,6 @@ module Database.Esqueleto
              , in_, notIn, exists, notExists
              , set, (=.), (+=.), (-=.), (*=.), (/=.) )
   , from
-  , Value(..)
-  , unValue
   , ValueList(..)
   , OrderBy
     -- ** Joins
@@ -372,7 +370,7 @@ import qualified Database.Persist
 -- | @valkey i = val (Key (PersistInt64 i))@
 -- (<https://github.com/meteficha/esqueleto/issues/9>).
 valkey :: Esqueleto query expr backend =>
-          Int64 -> expr (Value (Key entity))
+          Int64 -> expr (Key entity)
 valkey = val . Key . PersistInt64
 
 

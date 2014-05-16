@@ -7,6 +7,8 @@
            , MultiParamTypeClasses
            , OverloadedStrings
            , UndecidableInstances
+           , OverlappingInstances
+           , IncoherentInstances
  #-}
 -- | This is an internal module, anything exported by this module
 -- may change without a major version bump.  Please use only
@@ -112,18 +114,18 @@ instance Monoid SideData where
 -- | A part of a @FROM@ clause.
 data FromClause =
     FromStart Ident (EntityDef SqlType)
-  | FromJoin FromClause JoinKind FromClause (Maybe (SqlExpr (Value Bool)))
-  | OnClause (SqlExpr (Value Bool))
+  | FromJoin FromClause JoinKind FromClause (Maybe (SqlExpr Bool))
+  | OnClause (SqlExpr Bool)
 
 
 -- | A part of a @SET@ clause.
-newtype SetClause = SetClause (SqlExpr (Value ()))
+newtype SetClause = SetClause (SqlExpr ())
 
 
 -- | Collect 'OnClause's on 'FromJoin's.  Returns the first
 -- unmatched 'OnClause's data on error.  Returns a list without
 -- 'OnClauses' on success.
-collectOnClauses :: [FromClause] -> Either (SqlExpr (Value Bool)) [FromClause]
+collectOnClauses :: [FromClause] -> Either (SqlExpr Bool) [FromClause]
 collectOnClauses = go []
   where
     go []  (f@(FromStart _ _):fs) = fmap (f:) (go [] fs) -- fast path
@@ -149,7 +151,7 @@ collectOnClauses = go []
 
 
 -- | A complete @WHERE@ clause.
-data WhereClause = Where (SqlExpr (Value Bool))
+data WhereClause = Where (SqlExpr Bool)
                  | NoWhere
 
 instance Monoid WhereClause where
@@ -247,18 +249,18 @@ data SqlExpr a where
   -- connection (mainly for escaping names) and returns both an
   -- string ('TLB.Builder') and a list of values to be
   -- interpolated by the SQL backend.
-  ERaw     :: NeedParens -> (IdentInfo -> (TLB.Builder, [PersistValue])) -> SqlExpr (Value a)
+  ERaw     :: NeedParens -> (IdentInfo -> (TLB.Builder, [PersistValue])) -> SqlExpr a
 
   -- 'EList' and 'EEmptyList' are used by list operators.
-  EList      :: SqlExpr (Value a) -> SqlExpr (ValueList a)
+  EList      :: SqlExpr a -> SqlExpr (ValueList a)
   EEmptyList :: SqlExpr (ValueList a)
 
   -- A 'SqlExpr' accepted only by 'orderBy'.
-  EOrderBy :: OrderByType -> SqlExpr (Value a) -> SqlExpr OrderBy
+  EOrderBy :: OrderByType -> SqlExpr a -> SqlExpr OrderBy
   EOrderRandom :: SqlExpr OrderBy
 
   -- A 'SqlExpr' accepted only by 'set'.
-  ESet :: (SqlExpr (Entity val) -> SqlExpr (Value ())) -> SqlExpr (Update val)
+  ESet :: (SqlExpr (Entity val) -> SqlExpr ()) -> SqlExpr (Update val)
 
   -- An internal 'SqlExpr' used by the 'from' hack.
   EPreprocessedFrom :: a -> FromClause -> SqlExpr (PreprocessedFrom a)
@@ -335,7 +337,7 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
 
   EMaybe r ?. field = maybelize (r ^. field)
     where
-      maybelize :: SqlExpr (Value a) -> SqlExpr (Value (Maybe a))
+      maybelize :: SqlExpr a -> SqlExpr (Maybe a)
       maybelize (ERaw p f) = ERaw p f
 
   val = ERaw Never . const . (,) "?" . return . toPersistValue
@@ -409,7 +411,7 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
     in (fb <> ", " <> gb, fv ++ gv)
 
 
-instance ToSomeValues SqlExpr (SqlExpr (Value a)) where
+instance ToSomeValues SqlExpr (SqlExpr a) where
   toSomeValues a = [SomeValue a]
 
 fieldName :: (PersistEntity val, PersistField typ)
@@ -418,24 +420,24 @@ fieldName info = fromDBName info . fieldDB . persistFieldDef
 
 setAux :: (PersistEntity val, PersistField typ)
        => EntityField val typ
-       -> (SqlExpr (Entity val) -> SqlExpr (Value typ))
+       -> (SqlExpr (Entity val) -> SqlExpr typ)
        -> SqlExpr (Update val)
 setAux field mkVal = ESet $ \ent -> unsafeSqlBinOp " = " name (mkVal ent)
   where name = ERaw Never $ \info -> (fieldName info field, mempty)
 
-sub :: PersistField a => Mode -> SqlQuery (SqlExpr (Value a)) -> SqlExpr (Value a)
+sub :: PersistField a => Mode -> SqlQuery (SqlExpr a) -> SqlExpr a
 sub mode query = ERaw Parens $ \info -> toRawSql mode info query
 
 fromDBName :: IdentInfo -> DBName -> TLB.Builder
 fromDBName (conn, _) = TLB.fromText . connEscapeName conn
 
-existsHelper :: SqlQuery () -> SqlExpr (Value Bool)
+existsHelper :: SqlQuery () -> SqlExpr Bool
 existsHelper = sub SELECT . (>> return true)
   where
-    true :: SqlExpr (Value Bool)
+    true :: SqlExpr Bool
     true = val True
 
-ifNotEmptyList :: SqlExpr (ValueList a) -> Bool -> SqlExpr (Value Bool) -> SqlExpr (Value Bool)
+ifNotEmptyList :: SqlExpr (ValueList a) -> Bool -> SqlExpr Bool -> SqlExpr Bool
 ifNotEmptyList EEmptyList b _ = val b
 ifNotEmptyList (EList _)  _ x = x
 
@@ -449,13 +451,13 @@ ifNotEmptyList (EList _)  _ x = x
 -- signature.  For example:
 --
 -- @
--- (==.) :: SqlExpr (Value a) -> SqlExpr (Value a) -> SqlExpr (Value Bool)
+-- (==.) :: SqlExpr a -> SqlExpr a -> SqlExpr Bool
 -- (==.) = unsafeSqlBinOp " = "
 -- @
 --
 -- In the example above, we constraint the arguments to be of the
 -- same type and constraint the result to be a boolean value.
-unsafeSqlBinOp :: TLB.Builder -> SqlExpr (Value a) -> SqlExpr (Value b) -> SqlExpr (Value c)
+unsafeSqlBinOp :: TLB.Builder -> SqlExpr a -> SqlExpr b -> SqlExpr c
 unsafeSqlBinOp op (ERaw p1 f1) (ERaw p2 f2) = ERaw Parens f
   where
     f info = let (b1, vals1) = f1 info
@@ -467,7 +469,7 @@ unsafeSqlBinOp op (ERaw p1 f1) (ERaw p2 f2) = ERaw Parens f
 
 -- | (Internal) A raw SQL value.  The same warning from
 -- 'unsafeSqlBinOp' applies to this function as well.
-unsafeSqlValue :: TLB.Builder -> SqlExpr (Value a)
+unsafeSqlValue :: TLB.Builder -> SqlExpr a
 unsafeSqlValue v = ERaw Never $ \_ -> (v, mempty)
 {-# INLINE unsafeSqlValue #-}
 
@@ -475,7 +477,7 @@ unsafeSqlValue v = ERaw Never $ \_ -> (v, mempty)
 -- | (Internal) A raw SQL function.  Once again, the same warning
 -- from 'unsafeSqlBinOp' applies to this function as well.
 unsafeSqlFunction :: UnsafeSqlFunctionArgument a =>
-                     TLB.Builder -> a -> SqlExpr (Value b)
+                     TLB.Builder -> a -> SqlExpr b
 unsafeSqlFunction name arg =
   ERaw Never $ \info ->
     let (argsTLB, argsVals) =
@@ -487,7 +489,7 @@ unsafeSqlFunction name arg =
 --
 -- Since: 1.3.6.
 unsafeSqlExtractSubField :: UnsafeSqlFunctionArgument a =>
-                     TLB.Builder -> a -> SqlExpr (Value b)
+                     TLB.Builder -> a -> SqlExpr b
 unsafeSqlExtractSubField subField arg =
   ERaw Never $ \info ->
     let (argsTLB, argsVals) =
@@ -496,8 +498,8 @@ unsafeSqlExtractSubField subField arg =
 
 
 class UnsafeSqlFunctionArgument a where
-  toArgList :: a -> [SqlExpr (Value ())]
-instance (a ~ Value b) => UnsafeSqlFunctionArgument (SqlExpr a) where
+  toArgList :: a -> [SqlExpr ()]
+instance (a ~ b) => UnsafeSqlFunctionArgument (SqlExpr a) where
   toArgList = (:[]) . veryUnsafeCoerceSqlExprValue
 instance UnsafeSqlFunctionArgument a =>
          UnsafeSqlFunctionArgument [a] where
@@ -520,16 +522,16 @@ instance ( UnsafeSqlFunctionArgument a
 
 
 
--- | (Internal) Coerce a value's type from 'SqlExpr (Value a)' to
--- 'SqlExpr (Value b)'.  You should /not/ use this function
+-- | (Internal) Coerce a value's type from 'SqlExpr a' to
+-- 'SqlExpr b'.  You should /not/ use this function
 -- unless you know what you're doing!
-veryUnsafeCoerceSqlExprValue :: SqlExpr (Value a) -> SqlExpr (Value b)
+veryUnsafeCoerceSqlExprValue :: SqlExpr a -> SqlExpr b
 veryUnsafeCoerceSqlExprValue (ERaw p f) = ERaw p f
 
 
 -- | (Internal) Coerce a value's type from 'SqlExpr (ValueList
--- a)' to 'SqlExpr (Value a)'.  Does not work with empty lists.
-veryUnsafeCoerceSqlExprValueList :: SqlExpr (ValueList a) -> SqlExpr (Value a)
+-- a)' to 'SqlExpr a'.  Does not work with empty lists.
+veryUnsafeCoerceSqlExprValueList :: SqlExpr (ValueList a) -> SqlExpr a
 veryUnsafeCoerceSqlExprValueList (EList v)  = v
 veryUnsafeCoerceSqlExprValueList EEmptyList =
   error "veryUnsafeCoerceSqlExprValueList: empty list."
@@ -873,7 +875,7 @@ makeFrom info mode fs = ret
 
     makeOnClause (ERaw _ f) = first (" ON " <>) (f info)
 
-    mkExc :: SqlExpr (Value Bool) -> OnClauseWithoutMatchingJoinException
+    mkExc :: SqlExpr Bool -> OnClauseWithoutMatchingJoinException
     mkExc (ERaw _ f) =
       OnClauseWithoutMatchingJoinException $
       TL.unpack $ TLB.toLazyText $ fst (f info)
@@ -1016,12 +1018,12 @@ fromEMaybe = const Proxy
 
 -- | You may return any single value (i.e. a single column) from
 -- a 'select' query.
-instance PersistField a => SqlSelect (SqlExpr (Value a)) a where
+instance PersistField a => SqlSelect (SqlExpr a) a where
   sqlSelectCols info (ERaw p f) = let (b, vals) = f info
                                   in (parensM p b, vals)
   sqlSelectColCount = const 1
   sqlSelectProcessRow _ [pv] = fromPersistValue pv
-  sqlSelectProcessRow _ _    = Left "SqlSelect (Value a): wrong number of columns."
+  sqlSelectProcessRow _ _    = Left "SqlSelect a: wrong number of columns."
 
 
 -- | You may return tuples (up to 16-tuples) and tuples of tuples
