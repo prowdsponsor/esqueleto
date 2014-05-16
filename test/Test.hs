@@ -71,12 +71,12 @@ main = do
     describe "select" $ do
       it "works for a single value" $
         run $ do
-          ret <- select $ return $ val (3 :: Int)
+          ret <- select $ return $ (val 3 :: SqlExpr (Value Int))
           liftIO $ ret `shouldBe` [ Value 3 ]
 
       it "works for a pair of a single value and ()" $
         run $ do
-          ret <- select $ return (val (3 :: Int), ())
+          ret <- select $ return (val 3 :: SqlExpr (Value Int), ())
           liftIO $ ret `shouldBe` [ (Value 3, ()) ]
 
       it "works for a single ()" $
@@ -86,8 +86,8 @@ main = do
 
       it "works for a single NULL value" $
         run $ do
-          ret <- select $ return $ nothing
-          liftIO $ ret `shouldBe` [ Value (Nothing :: Maybe Int) ]
+          ret <- select $ return $ (nothing :: SqlExpr (Value (Maybe Int)))
+          liftIO $ ret `shouldBe` [ Value Nothing ]
 
     describe "select/from" $ do
       it "works for a simple example" $
@@ -95,14 +95,15 @@ main = do
           p1e <- insert' p1
           ret <- select $
                  from $ \person ->
-                 return person
+                 return (person :: SqlExpr (Entity Person))
           liftIO $ ret `shouldBe` [ p1e ]
 
       it "works for a simple self-join (one entity)" $
         run $ do
           p1e <- insert' p1
           ret <- select $
-                 from $ \(person1, person2) ->
+                 from $ \(person1, person2) -> do
+                 let _ = person1 `asTypeOf` person2 :: SqlExpr (Entity Person)
                  return (person1, person2)
           liftIO $ ret `shouldBe` [ (p1e, p1e) ]
 
@@ -111,7 +112,8 @@ main = do
           p1e <- insert' p1
           p2e <- insert' p2
           ret <- select $
-                 from $ \(person1, person2) ->
+                 from $ \(person1, person2) -> do
+                 let _ = person1 `asTypeOf` person2 :: SqlExpr (Entity Person)
                  return (person1, person2)
           liftIO $ ret `shouldSatisfy` sameElementsAs [ (p1e, p1e)
                                                       , (p1e, p2e)
@@ -154,7 +156,7 @@ main = do
           p1k <- insert p1
           p2k <- insert p2
           ret <- select $
-                 from $ \p ->
+                 from $ \(p :: SqlExpr (Entity Person)) ->
                  return (p ^. PersonId, p ^. PersonName)
           liftIO $ ret `shouldBe` [ (Value p1k, Value (personName p1))
                                   , (Value p2k, Value (personName p2)) ]
@@ -164,7 +166,8 @@ main = do
           _ <- insert p1
           _ <- insert p2
           ret <- select $
-                 from $ \(pa, pb) ->
+                 from $ \(pa, pb) -> do
+                 let _ = pa `asTypeOf` pb :: SqlExpr (Entity Person)
                  return (pa ^. PersonName, pb ^. PersonName)
           liftIO $ ret `shouldSatisfy` sameElementsAs
                                   [ (Value (personName p1), Value (personName p1))
@@ -322,7 +325,7 @@ main = do
           _ <- insert' p3
           _ <- insert' p4
           ret <- select $
-                 from $ \p->
+                 from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ sum_ (p ^. PersonAge)
 #if   defined(WITH_POSTGRESQL)
           liftIO $ ret `shouldBe` [ Value $ Just (36 + 17 + 17 :: Rational ) ]
@@ -339,7 +342,7 @@ main = do
           _ <- insert' p3
           _ <- insert' p4
           ret <- select $
-                 from $ \p->
+                 from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ avg_ (p ^. PersonAge)
           liftIO $ ret `shouldBe` [ Value $ Just ((36 + 17 + 17) / 3 :: Double) ]
 
@@ -350,7 +353,7 @@ main = do
           _ <- insert' p3
           _ <- insert' p4
           ret <- select $
-                 from $ \p->
+                 from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ min_ (p ^. PersonAge)
           liftIO $ ret `shouldBe` [ Value $ Just (17 :: Int) ]
 
@@ -361,7 +364,7 @@ main = do
           _ <- insert' p3
           _ <- insert' p4
           ret <- select $
-                 from $ \p->
+                 from $ \(p :: SqlExpr (Entity Person)) ->
                  return $ joinV $ max_ (p ^. PersonAge)
           liftIO $ ret `shouldBe` [ Value $ Just (36 :: Int) ]
 
@@ -376,8 +379,8 @@ main = do
 
       it "works with round_" $
         run $ do
-          ret <- select $ return $ round_ (val (16.2 :: Double))
-          liftIO $ ret `shouldBe` [ Value (16 :: Double) ]
+          ret <- select $ return (round_ $ val (16.2 :: Double) :: SqlExpr (Value Double))
+          liftIO $ ret `shouldBe` [ Value 16 ]
 
       it "works with isNothing" $
         run $ do
@@ -792,8 +795,10 @@ main = do
           _ <- insert p3
           insertSelect $ from $ \p -> do
             return $ BlogPost <# val "FakePost" <&> (p ^. PersonId)
-          ret <- select $ from (\(_::(SqlExpr (Entity BlogPost))) -> return countRows)
-          liftIO $ ret `shouldBe` [Value (3::Int)]
+          ret <- select $
+                 from $ \(_::(SqlExpr (Entity BlogPost))) ->
+                 return (countRows :: SqlExpr (Value Int))
+          liftIO $ ret `shouldBe` [Value 3]
 
     describe "rand works" $ do
       it "returns result in random order" $
@@ -807,10 +812,10 @@ main = do
             _ <- insert $ Person "Mark"  Nothing
             _ <- insert $ Person "Sarah" Nothing
             insert $ Person "Paul"  Nothing
-          ret1 <- fmap (map unValue) $ select $ from $ \p -> do
+          ret1 <- fmap (map unValue) $ select $ from $ \(p :: SqlExpr (Entity Person)) -> do
                     orderBy [rand]
                     return (p ^. PersonId)
-          ret2 <- fmap (map unValue) $ select $ from $ \p -> do
+          ret2 <- fmap (map unValue) $ select $ from $ \(p :: SqlExpr (Entity Person)) -> do
                     orderBy [rand]
                     return (p ^. PersonId)
 
