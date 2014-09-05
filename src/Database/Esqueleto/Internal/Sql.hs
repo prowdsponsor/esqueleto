@@ -48,7 +48,7 @@ module Database.Esqueleto.Internal.Sql
 import Control.Applicative (Applicative(..), (<$>), (<$))
 import Control.Arrow ((***), first)
 import Control.Exception (throw, throwIO)
-import Control.Monad ((>=>), ap, void, MonadPlus(..))
+import Control.Monad (ap, void, MonadPlus(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Resource (MonadResource)
@@ -548,13 +548,11 @@ rawSelectSource :: ( SqlSelect a r
                    , MonadSqlPersist m )
                  => Mode
                  -> SqlQuery a
-                 -> m (C.Source m r)
-rawSelectSource mode query = src
+                 -> C.Source m r
+rawSelectSource mode query = do
+  conn <- lift $ askSqlConn
+  run conn C.$= massage
     where
-      src = do
-        conn <- askSqlConn
-        return $ run conn C.$= massage
-
       run conn =
         uncurry rawQuery $
         first builderToText $
@@ -576,7 +574,7 @@ selectSource :: ( SqlSelect a r
                 , MonadResource m
                 , MonadSqlPersist m )
              => SqlQuery a
-             -> m (C.Source m r)
+             -> C.Source m r
 selectSource = rawSelectSource SELECT
 
 
@@ -625,7 +623,7 @@ select :: ( SqlSelect a r
           , MonadResource m
           , MonadSqlPersist m )
        => SqlQuery a -> m [r]
-select = selectSource >=> runSource
+select = runSource . selectSource 
 
 
 -- | Execute an @esqueleto@ @SELECT DISTINCT@ query inside
@@ -636,7 +634,7 @@ selectDistinctSource
      , MonadResource m
      , MonadSqlPersist m )
   => SqlQuery a
-  -> m (C.Source m r)
+  -> C.Source m r
 selectDistinctSource = rawSelectSource SELECT_DISTINCT
 
 
@@ -646,7 +644,7 @@ selectDistinct :: ( SqlSelect a r
                   , MonadResource m
                   , MonadSqlPersist m )
                => SqlQuery a -> m [r]
-selectDistinct = selectDistinctSource >=> runSource
+selectDistinct = runSource . selectDistinctSource
 
 
 -- | (Internal) Run a 'C.Source' of rows.
