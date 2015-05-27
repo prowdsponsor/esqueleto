@@ -17,7 +17,6 @@
  #-}
 module Main (main) where
 
-import Control.Applicative ((<$>))
 import Control.Exception (IOException)
 import Control.Monad (replicateM, replicateM_)
 import Control.Monad.IO.Class (MonadIO(liftIO))
