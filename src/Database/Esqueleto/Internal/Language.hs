@@ -357,6 +357,9 @@ class (Functor query, Applicative query, Monad query) =>
   ceiling_ :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
   floor_   :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
 
+  exp_     :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
+  log_     :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
+
   sum_     :: (PersistField a, PersistField b) => expr (Value a) -> expr (Value (Maybe b))
   min_     :: (PersistField a) => expr (Value a) -> expr (Value (Maybe a))
   max_     :: (PersistField a) => expr (Value a) -> expr (Value (Maybe a))

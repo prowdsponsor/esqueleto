@@ -468,6 +468,9 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   ceiling_ = unsafeSqlFunction "CEILING"
   floor_   = unsafeSqlFunction "FLOOR"
 
+  exp_     = unsafeSqlFunction "EXP"
+  log_     = unsafeSqlFunction "LOG"
+
   sum_     = unsafeSqlFunction "SUM"
   min_     = unsafeSqlFunction "MIN"
   max_     = unsafeSqlFunction "MAX"
