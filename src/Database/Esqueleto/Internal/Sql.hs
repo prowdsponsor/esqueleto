@@ -35,6 +35,7 @@ module Database.Esqueleto.Internal.Sql
   , unsafeSqlValue
   , unsafeSqlFunction
   , unsafeSqlExtractSubField
+  , unsafeSqlCast
   , UnsafeSqlFunctionArgument
   , rawSelectSource
   , runSource
@@ -698,6 +699,16 @@ unsafeSqlFunctionParens name arg =
     let (argsTLB, argsVals) =
           uncommas' $ map (\(ERaw p f) -> first (parensM p) (f info)) $ toArgList arg
     in (name <> parens argsTLB, argsVals)
+
+-- | (Internal) An unsafe SQL function to cast an SQL value.
+-- See 'unsafeSqlBinOp' for warnings.
+unsafeSqlCast :: UnsafeSqlFunctionArgument a =>
+                 TLB.Builder -> a -> SqlExpr (Value b)
+unsafeSqlCast targetType arg =
+  ERaw Never $ \info ->
+    let (argsTLB, argsVals) =
+          uncommas' $ map (\(ERaw _ f) -> f info) $ toArgList arg
+    in (parens (argsTLB <> "::" <> targetType), argsVals)
 
 
 class UnsafeSqlFunctionArgument a where
