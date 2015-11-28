@@ -462,6 +462,8 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   (-.)  = unsafeSqlBinOp " - "
   (/.)  = unsafeSqlBinOp " / "
   (*.)  = unsafeSqlBinOp " * "
+  (&.)  = unsafeSqlBinOp " & "
+  (%.)  = unsafeSqlBinOp " % "
 
   random_  = unsafeSqlValue "RANDOM()"
   round_   = unsafeSqlFunction "ROUND"

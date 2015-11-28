@@ -350,6 +350,8 @@ class (Functor query, Applicative query, Monad query) =>
   (-.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
   (/.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
   (*.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
+  (&.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
+  (%.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
 
 
   random_  :: (PersistField a, Num a) => expr (Value a)
@@ -543,7 +545,7 @@ class (Functor query, Applicative query, Monad query) =>
 
 -- Fixity declarations
 infixl 9 ^.
-infixl 7 *., /.
+infixl 7 *., /., &., %.
 infixl 6 +., -.
 infixr 5 ++.
 infix  4 ==., >=., >., <=., <., !=.
