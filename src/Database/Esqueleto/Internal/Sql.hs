@@ -446,9 +446,7 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   count         = countHelper ""           ""
   countDistinct = countHelper "(DISTINCT " ")"
 
-  not_ (ERaw p f) = ERaw Never $ \info -> let (b, vals) = f info
-                                          in ("NOT " <> parensM p b, vals)
-  not_ (ECompositeKey _) = unexpectedCompositeKeyError "not_"
+  not_ = unsafeSqlUnOp "NOT "
 
   (==.) = unsafeSqlBinOpComposite " = " " AND "
   (!=.) = unsafeSqlBinOpComposite " != " " OR "
