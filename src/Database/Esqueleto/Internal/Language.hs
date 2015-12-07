@@ -369,7 +369,7 @@ class (Functor query, Applicative query, Monad query) =>
   -- Bitwise NOT
   --
   -- /Since: 2.4.2/
-  (~.) :: PersistField a => expr (Value a) -> expr (Value a)
+  bitwiseNot :: PersistField a => expr (Value a) -> expr (Value a)
 
 
   random_  :: (PersistField a, Num a) => expr (Value a)

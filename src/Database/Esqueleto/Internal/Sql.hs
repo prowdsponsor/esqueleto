@@ -465,7 +465,7 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   (%.)  = unsafeSqlBinOp " % "
   (&.)  = unsafeSqlBinOp " & "
   (|.)  = unsafeSqlBinOp " | "
-  (~.)  = unsafeSqlUnOp "~ "
+  bitwiseNot = unsafeSqlUnOp "~ "
 
   random_  = unsafeSqlValue "RANDOM()"
   round_   = unsafeSqlFunction "ROUND"
@@ -598,8 +598,8 @@ unsafeSqlCase _ (ECompositeKey _) = unexpectedCompositeKeyError "unsafeSqlCase"
 -- signature.  For example:
 --
 -- @
--- (~.) :: SqlExpr (Value a) -> SqlExpr (Value a)
--- (~.) = unsafeSqlUnOp "~ "
+-- bitwiseNot :: SqlExpr (Value a) -> SqlExpr (Value a)
+-- bitwiseNot = unsafeSqlUnOp "~ "
 -- @
 --
 -- /Since: 2.4.2/
