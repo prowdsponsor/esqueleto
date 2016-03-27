@@ -447,9 +447,7 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   count         = countHelper ""           ""
   countDistinct = countHelper "(DISTINCT " ")"
 
-  not_ (ERaw p f) = ERaw Never $ \info -> let (b, vals) = f info
-                                          in ("NOT " <> parensM p b, vals)
-  not_ (ECompositeKey _) = unexpectedCompositeKeyError "not_"
+  not_ = unsafeSqlUnOp "NOT "
 
   (==.) = unsafeSqlBinOpComposite " = " " AND "
   (!=.) = unsafeSqlBinOpComposite " != " " OR "
@@ -463,6 +461,10 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   (-.)  = unsafeSqlBinOp " - "
   (/.)  = unsafeSqlBinOp " / "
   (*.)  = unsafeSqlBinOp " * "
+  (%.)  = unsafeSqlBinOp " % "
+  (&.)  = unsafeSqlBinOp " & "
+  (|.)  = unsafeSqlBinOp " | "
+  bitwiseNot = unsafeSqlUnOp "~ "
 
   random_  = unsafeSqlValue "RANDOM()"
   round_   = unsafeSqlFunction "ROUND"
@@ -589,6 +591,26 @@ unsafeSqlCase when (ERaw p1 f1) = ERaw Never buildCase
         in ( b0 <> " WHEN " <> parensM p1' b1 <> " THEN " <> parensM p2 b2, vals0 <> vals1 <> vals2 )
     foldHelp _ _ _ = unexpectedCompositeKeyError "unsafeSqlCase/foldHelp"
 unsafeSqlCase _ (ECompositeKey _) = unexpectedCompositeKeyError "unsafeSqlCase"
+
+
+-- | (Internal) Create a custom unary operator.  You /should/
+-- /not/ use this function directly since its type is very
+-- general, you should always use it with an explicit type
+-- signature.  For example:
+--
+-- @
+-- bitwiseNot :: SqlExpr (Value a) -> SqlExpr (Value a)
+-- bitwiseNot = unsafeSqlUnOp "~ "
+-- @
+--
+-- /Since: 2.4.2/
+unsafeSqlUnOp :: TLB.Builder -> SqlExpr (Value a) -> SqlExpr (Value b)
+unsafeSqlUnOp op (ERaw p f) = ERaw Never f'
+  where
+    f' info = let (b, vals) = f info
+              in (op <> parensM p b, vals)
+unsafeSqlUnOp _ _ = unexpectedCompositeKeyError "unsafeSqlUnOp"
+{-# INLINE unsafeSqlUnOp #-}
 
 
 -- | (Internal) Create a custom binary operator.  You /should/

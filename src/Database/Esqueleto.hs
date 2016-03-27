@@ -44,7 +44,7 @@ module Database.Esqueleto
              , val, isNothing, just, nothing, joinV
              , countRows, count, countDistinct
              , not_, (==.), (>=.), (>.), (<=.), (<.), (!=.), (&&.), (||.)
-             , (+.), (-.), (/.), (*.)
+             , (+.), (-.), (/.), (*.), (%.), (&.), (|.), bitwiseNot
              , random_, round_, ceiling_, floor_
              , min_, max_, sum_, avg_, castNum, castNumM
              , coalesce, coalesceDefault

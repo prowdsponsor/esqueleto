@@ -352,6 +352,26 @@ class (Functor query, Applicative query, Monad query) =>
   (/.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
   (*.)  :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
 
+  -- Modulo (remainder)
+  --
+  -- /Since: 2.4.2/
+  (%.) :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
+
+  -- Bitwise AND
+  --
+  -- /Since: 2.4.2/
+  (&.) :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
+
+  -- Bitwise OR
+  --
+  -- /Since: 2.4.2/
+  (|.) :: PersistField a => expr (Value a) -> expr (Value a) -> expr (Value a)
+
+  -- Bitwise NOT
+  --
+  -- /Since: 2.4.2/
+  bitwiseNot :: PersistField a => expr (Value a) -> expr (Value a)
+
 
   random_  :: (PersistField a, Num a) => expr (Value a)
   round_   :: (PersistField a, Num a, PersistField b, Num b) => expr (Value a) -> expr (Value b)
@@ -598,7 +618,7 @@ class (Functor query, Applicative query, Monad query) =>
 
 -- Fixity declarations
 infixl 9 ^.
-infixl 7 *., /.
+infixl 7 *., /., %., &., |.
 infixl 6 +., -.
 infixr 5 ++.
 infix  4 ==., >=., >., <=., <., !=.
