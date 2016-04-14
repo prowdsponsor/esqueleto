@@ -9,6 +9,7 @@
            , UndecidableInstances
            , ScopedTypeVariables
            , InstanceSigs
+           , Rank2Types
  #-}
 -- | This is an internal module, anything exported by this module
 -- may change without a major version bump.  Please use only
@@ -754,10 +755,10 @@ rawSelectSource :: ( SqlSelect a r
                    , MonadIO m2 )
                  => Mode
                  -> SqlQuery a
-                 -> SqlPersistT m1 (Acquire (C.Source m2 r))
+                 -> SqlReadT m1 (Acquire (C.Source m2 r))
 rawSelectSource mode query =
       do
-        conn <- R.ask
+        conn <- persistBackend <$> R.ask
         res <- run conn
         return $ (C.$= massage) `fmap` res
     where
@@ -833,7 +834,7 @@ selectSource query = do
 -- @SqlExpr (Entity Person)@.
 select :: ( SqlSelect a r
           , MonadIO m )
-       => SqlQuery a -> SqlPersistT m [r]
+       => SqlQuery a -> SqlReadT m [r]
 select query = do
     res <- rawSelectSource SELECT query
     conn <- R.ask
@@ -863,8 +864,8 @@ selectDistinct = select . distinct
 
 -- | (Internal) Run a 'C.Source' of rows.
 runSource :: Monad m =>
-             C.Source (SqlPersistT m) r
-          -> SqlPersistT m [r]
+             C.Source (R.ReaderT backend m) r
+          -> R.ReaderT backend m [r]
 runSource src = src C.$$ CL.consume
 
 
@@ -873,12 +874,12 @@ runSource src = src C.$$ CL.consume
 
 -- | (Internal) Execute an @esqueleto@ statement inside
 -- @persistent@'s 'SqlPersistT' monad.
-rawEsqueleto :: ( MonadIO m, SqlSelect a r )
+rawEsqueleto :: ( MonadIO m, SqlSelect a r, IsSqlBackend backend)
            => Mode
            -> SqlQuery a
-           -> SqlPersistT m Int64
+           -> R.ReaderT backend m Int64
 rawEsqueleto mode query = do
-  conn <- R.ask
+  conn <- persistBackend <$> R.ask
   uncurry rawExecuteCount $
     first builderToText $
     toRawSql mode (conn, initialIdentState) query
@@ -908,14 +909,14 @@ rawEsqueleto mode query = do
 -- @
 delete :: ( MonadIO m )
        => SqlQuery ()
-       -> SqlPersistT m ()
+       -> SqlWriteT m ()
 delete = liftM (const ()) . deleteCount
 
 
 -- | Same as 'delete', but returns the number of rows affected.
 deleteCount :: ( MonadIO m )
             => SqlQuery ()
-            -> SqlPersistT m Int64
+            -> SqlWriteT m Int64
 deleteCount = rawEsqueleto DELETE
 
 
@@ -934,7 +935,7 @@ deleteCount = rawEsqueleto DELETE
 update :: ( MonadIO m
           , SqlEntity val )
        => (SqlExpr (Entity val) -> SqlQuery ())
-       -> SqlPersistT m ()
+       -> SqlWriteT m ()
 update = liftM (const ()) . updateCount
 
 
@@ -942,7 +943,7 @@ update = liftM (const ()) . updateCount
 updateCount :: ( MonadIO m
                , SqlEntity val )
             => (SqlExpr (Entity val) -> SqlQuery ())
-            -> SqlPersistT m Int64
+            -> SqlWriteT m Int64
 updateCount = rawEsqueleto UPDATE . from
 
 
@@ -961,7 +962,9 @@ builderToText = TL.toStrict . TLB.toLazyTextWith defaultChunkSize
 -- @esqueleto@, instead of manually using this function (which is
 -- possible but tedious), you may just turn on query logging of
 -- @persistent@.
-toRawSql :: SqlSelect a r => Mode -> IdentInfo -> SqlQuery a -> (TLB.Builder, [PersistValue])
+toRawSql
+  :: (IsSqlBackend backend, SqlSelect a r)
+  => Mode -> (backend, IdentState) -> SqlQuery a -> (TLB.Builder, [PersistValue])
 toRawSql mode (conn, firstIdentState) query =
   let ((ret, sd), finalIdentState) =
         flip S.runState firstIdentState $
@@ -980,7 +983,7 @@ toRawSql mode (conn, firstIdentState) query =
       -- that were used) to the subsequent calls.  This ensures
       -- that no name clashes will occur on subqueries that may
       -- appear on the expressions below.
-      info = (conn, finalIdentState)
+      info = (persistBackend conn, finalIdentState)
   in mconcat
       [ makeInsertInto info mode ret
       , makeSelect     info mode distinctClause ret
@@ -1745,17 +1748,17 @@ to16 ((a,b),(c,d),(e,f),(g,h),(i,j),(k,l),(m,n),(o,p)) = (a,b,c,d,e,f,g,h,i,j,k,
 --
 -- /Since: 2.4.2/
 insertSelect :: (MonadIO m, PersistEntity a) =>
-  SqlQuery (SqlExpr (Insertion a)) -> SqlPersistT m ()
+  SqlQuery (SqlExpr (Insertion a)) -> SqlWriteT m ()
 insertSelect = liftM (const ()) . insertSelectCount
 
 -- | Insert a 'PersistField' for every selected value, return the count afterward
 insertSelectCount :: (MonadIO m, PersistEntity a) =>
-  SqlQuery (SqlExpr (Insertion a)) -> SqlPersistT m Int64
+  SqlQuery (SqlExpr (Insertion a)) -> SqlWriteT m Int64
 insertSelectCount = rawEsqueleto INSERT_INTO . fmap EInsertFinal
 
 
 -- | Insert a 'PersistField' for every unique selected value.
 insertSelectDistinct :: (MonadIO m, PersistEntity a) =>
-  SqlQuery (SqlExpr (Insertion a)) -> SqlPersistT m ()
+  SqlQuery (SqlExpr (Insertion a)) -> SqlWriteT m ()
 insertSelectDistinct = insertSelect . distinct
 {-# DEPRECATED insertSelectDistinct "Since 2.2.4: use 'insertSelect' and 'distinct'." #-}
