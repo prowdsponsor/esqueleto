@@ -101,6 +101,7 @@ module Database.Esqueleto
     -- * Re-exports
     -- $reexports
   , deleteKey
+  , countWhere
   , module Database.Esqueleto.Internal.PersistentImport
   ) where
 
@@ -428,10 +429,18 @@ valJ = val . unValue
 ----------------------------------------------------------------------
 
 
--- | Synonym for 'Database.Persist.Store.delete' that does not
--- clash with @esqueleto@'s 'delete'.
-deleteKey :: ( PersistStore (PersistEntityBackend val)
-             , MonadIO m
-             , PersistEntity val )
-          => Key val -> ReaderT (PersistEntityBackend val) m ()
+-- | Synonym for 'Database.Persist.delete' that does not clash with
+-- @esqueleto@'s 'delete'.
+deleteKey :: ( BaseBackend backend ~ PersistEntityBackend val
+             , PersistStoreWrite backend
+             , PersistEntity val
+             , MonadIO m) => Key val -> ReaderT backend m ()
 deleteKey = Database.Persist.delete
+
+-- | Synonym for 'Database.Persist.count' that does not clash with
+-- @esqueleto@'s 'count'.
+countWhere :: ( BaseBackend backend ~ PersistEntityBackend val
+              , PersistQueryRead backend
+              , PersistEntity val
+              , MonadIO m) => [Database.Persist.Filter val] -> ReaderT backend m Int
+countWhere = Database.Persist.count

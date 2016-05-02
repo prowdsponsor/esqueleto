@@ -1,1 +1,15 @@
-resolver: lts-5.1
+resolver: lts-5.15
+packages:
+  - '.'
+  # TODO remove me when stack's package index can find persistent 2.5.
+  - location:
+      git: git@github.com:yesodweb/persistent
+      commit: 350720f19e1a135c3810e70178c28c6c855ab5bf
+    extra-dep: true
+    subdirs:
+    - persistent
+    - persistent-mysql
+    - persistent-sqlite
+    - persistent-template
+extra-deps:
+  - persistent-2.5
