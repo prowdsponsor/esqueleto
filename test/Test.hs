@@ -52,10 +52,13 @@ import Test.Hspec
 import qualified Control.Monad.Trans.Resource as R
 import qualified Data.List as L
 import qualified Data.Set as S
+import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Database.Esqueleto.PostgreSQL as EP
 import qualified Database.Esqueleto.Internal.Sql as EI
 
+castAsReal :: SqlExpr (Value Int) -> SqlExpr (Value Double)
+castAsReal = EI.unsafeSqlCastAs "real"
 
 -- Test schema
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
@@ -293,6 +296,7 @@ main = do
           liftIO $ do
             ret `shouldBe` fc
             fcPk `shouldBe` thePk
+
 
       it "works when returning a custom non-composite primary key from a query" $
         run $ do
@@ -1316,6 +1320,16 @@ main = do
                   groupBy (p1 ^. PersonId)
                   having (countRows <. val (0 :: Int))
                   return (p1, p2)
+                queryWithCastAs =
+                  from $ \(p1 `InnerJoin` p2) -> do
+                  on (p1 ^. PersonName ==. p2 ^. PersonName)
+                  where_ (((castAsReal (p1 ^. PersonFavNum))) >. val 2)
+                  orderBy [desc (p2 ^. PersonAge)]
+                  limit 3
+                  offset 9
+                  groupBy (p1 ^. PersonId)
+                  having (countRows <. val (0 :: Int))
+                  return (p1, p2)
                 queryWithClause1 = do
                   r <- complexQuery
                   locking kind
@@ -1332,11 +1346,12 @@ main = do
                 toText conn q =
                   let (tlb, _) = EI.toRawSql EI.SELECT (conn, EI.initialIdentState) q
                   in TLB.toLazyText tlb
-            [complex, with1, with2, with3] <-
+            [complex, with1, with2, with3, castAsQuery] <-
               runNoLoggingT $ withConn $ \conn -> return $
-                map (toText conn) [complexQuery, queryWithClause1, queryWithClause2, queryWithClause3]
+                map (toText conn) [complexQuery, queryWithClause1, queryWithClause2, queryWithClause3, queryWithCastAs]
             let expected = complex <> "\n" <> syntax
             (with1, with2, with3) `shouldBe` (expected, expected, expected)
+            (T.unpack castAsQuery) `shouldContain` "CAST(\"Person\".\"favNum\" AS real)"
 
       it "looks sane for ForUpdate"       $ sanityCheck ForUpdate       "FOR UPDATE"
       it "looks sane for ForShare"        $ sanityCheck ForShare        "FOR SHARE"
