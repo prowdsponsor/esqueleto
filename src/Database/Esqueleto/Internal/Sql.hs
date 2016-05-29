@@ -34,6 +34,7 @@ module Database.Esqueleto.Internal.Sql
   , unsafeSqlBinOp
   , unsafeSqlBinOpComposite
   , unsafeSqlValue
+  , unsafeSqlCastAs
   , unsafeSqlFunction
   , unsafeSqlExtractSubField
   , UnsafeSqlFunctionArgument
@@ -702,6 +703,13 @@ unsafeSqlFunctionParens name arg =
           uncommas' $ map (\(ERaw p f) -> first (parensM p) (f info)) $ toArgList arg
     in (name <> parens argsTLB, argsVals)
 
+
+-- | explicit cast using CAST(value as type)
+unsafeSqlCastAs :: T.Text -> SqlExpr (Value a) -> SqlExpr (Value b)
+unsafeSqlCastAs t (ERaw p f) =
+  ERaw Never $ \info ->
+    let (b, v) = f info
+    in ("CAST" <> parens ( parensM p b <> " AS " <> TLB.fromText t), v )
 
 class UnsafeSqlFunctionArgument a where
   toArgList :: a -> [SqlExpr (Value ())]
