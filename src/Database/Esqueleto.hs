@@ -430,8 +430,8 @@ valJ = val . unValue
 
 -- | Synonym for 'Database.Persist.Store.delete' that does not
 -- clash with @esqueleto@'s 'delete'.
-deleteKey :: ( PersistStore (PersistEntityBackend val)
-             , MonadIO m
-             , PersistEntity val )
-          => Key val -> ReaderT (PersistEntityBackend val) m ()
+deleteKey :: ( PersistStore backend
+             , PersistRecordBackend val backend
+             , MonadIO m )
+          => Key val -> ReaderT backend m ()
 deleteKey = Database.Persist.delete
