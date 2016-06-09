@@ -74,13 +74,11 @@ class (Functor query, Applicative query, Monad query) =>
   --   In the end, 'fromFinish' is called to materialize the
   --   @JOIN@.
   fromStart
-    :: ( PersistEntity a
-       , PersistEntityBackend a ~ backend )
+    :: PersistRecordBackend a backend
     => query (expr (PreprocessedFrom (expr (Entity a))))
   -- | (Internal) Same as 'fromStart', but entity may be missing.
   fromStartMaybe
-    :: ( PersistEntity a
-       , PersistEntityBackend a ~ backend )
+    :: PersistRecordBackend a backend
     => query (expr (PreprocessedFrom (expr (Maybe (Entity a)))))
   -- | (Internal) Do a @JOIN@.
   fromJoin
@@ -926,8 +924,7 @@ class ToBaseId ent where
 -- @
 -- person
 --   :: ( Esqueleto query expr backend
---      , PersistEntity Person
---      , PersistEntityBackend Person ~ backend
+--      , PersistRecordBackend Person backend
 --      ) => expr (Entity Person)
 -- (person, blogPost)
 --   :: (...) => (expr (Entity Person), expr (Entity BlogPost))
@@ -1054,14 +1051,12 @@ class Esqueleto query expr backend => FromPreprocess query expr backend a where
   fromPreprocess :: query (expr (PreprocessedFrom a))
 
 instance ( Esqueleto query expr backend
-         , PersistEntity val
-         , PersistEntityBackend val ~ backend
+         , PersistRecordBackend val backend
          ) => FromPreprocess query expr backend (expr (Entity val)) where
   fromPreprocess = fromStart
 
 instance ( Esqueleto query expr backend
-         , PersistEntity val
-         , PersistEntityBackend val ~ backend
+         , PersistRecordBackend val backend
          ) => FromPreprocess query expr backend (expr (Maybe (Entity val))) where
   fromPreprocess = fromStartMaybe
 
