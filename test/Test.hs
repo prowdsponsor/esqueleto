@@ -1395,11 +1395,10 @@ main = do
 ----------------------------------------------------------------------
 
 
-insert' :: ( Functor m
-           , PersistStore (PersistEntityBackend val)
+insert' :: ( PersistStoreWrite b
            , MonadIO m
-           , PersistEntity val )
-        => val -> ReaderT (PersistEntityBackend val) m (Entity val)
+           , PersistRecordBackend val b)
+        => val -> ReaderT b m (Entity val)
 insert' v = flip Entity v <$> insert v
 
 
