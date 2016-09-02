@@ -76,6 +76,8 @@ library
     , resourcet            >= 1.1
     , blaze-html
   hs-source-dirs: src/
+  if impl(ghc >= 8.0.1)
+     ghc-options: -Wall -Wno-redundant-constraints
   ghc-options: -Wall
 
 test-suite test

@@ -405,7 +405,7 @@ import qualified Database.Persist
 
 -- | @valkey i = 'val' . 'toSqlKey'@
 -- (<https://github.com/prowdsponsor/esqueleto/issues/9>).
-valkey :: (Esqueleto query expr backend, ToBackendKey SqlBackend entity, PersistField (Key entity)) =>
+valkey :: (Esqueleto query expr backend, ToBackendKey SqlBackend entity) =>
           Int64 -> expr (Value (Key entity))
 valkey = val . toSqlKey
 

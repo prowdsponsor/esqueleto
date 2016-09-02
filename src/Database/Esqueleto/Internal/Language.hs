@@ -299,7 +299,7 @@ class (Functor query, Applicative query, Monad query) =>
   sub_selectDistinct :: PersistField a => query (expr (Value a)) -> expr (Value a)
 
   -- | Project a field of an entity.
-  (^.) :: (PersistEntity val, PersistField typ) =>
+  (^.) :: (PersistEntity val) =>
           expr (Entity val) -> EntityField val typ -> expr (Value typ)
 
   -- | Project a field of an entity that may be null.

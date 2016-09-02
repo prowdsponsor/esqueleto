@@ -421,7 +421,7 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   sub_select         = sub SELECT
   sub_selectDistinct = sub_select . distinct
 
-  (^.) :: forall val typ. (PersistEntity val, PersistField typ)
+  (^.) :: forall val typ. (PersistEntity val)
        => SqlExpr (Entity val) -> EntityField val typ -> SqlExpr (Value typ)
   EEntity ident ^. field
     | isComposite = ECompositeKey $ \info ->  dot info <$> compositeFields pdef
@@ -530,12 +530,12 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
 instance ToSomeValues SqlExpr (SqlExpr (Value a)) where
   toSomeValues a = [SomeValue a]
 
-fieldName :: (PersistEntity val, PersistField typ)
+fieldName :: (PersistEntity val)
           => IdentInfo -> EntityField val typ -> TLB.Builder
 fieldName info = fromDBName info . fieldDB . persistFieldDef
 
 -- FIXME: Composite/non-id pKS not supported on set
-setAux :: (PersistEntity val, PersistField typ)
+setAux :: (PersistEntity val)
        => EntityField val typ
        -> (SqlExpr (Entity val) -> SqlExpr (Value typ))
        -> SqlExpr (Update val)
