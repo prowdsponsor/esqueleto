@@ -1395,11 +1395,10 @@ main = do
 ----------------------------------------------------------------------
 
 
-insert' :: ( Functor m
-           , PersistStore (PersistEntityBackend val)
+insert' :: ( PersistStoreWrite b
            , MonadIO m
-           , PersistEntity val )
-        => val -> ReaderT (PersistEntityBackend val) m (Entity val)
+           , PersistRecordBackend val b)
+        => val -> ReaderT b m (Entity val)
 insert' v = flip Entity v <$> insert v
 
 
@@ -1461,7 +1460,7 @@ withConn :: RunDbMonad m => (SqlBackend -> R.ResourceT m a) -> m a
 withConn =
   R.runResourceT .
 #if defined(WITH_POSTGRESQL)
-  withPostgresqlConn "host=localhost port=5432 user=test dbname=test"
+  withPostgresqlConn "host=localhost port=5432 user=test password=test dbname=test"
 #elif defined (WITH_MYSQL)
   withMySQLConn defaultConnectInfo
     { connectHost     = "localhost"

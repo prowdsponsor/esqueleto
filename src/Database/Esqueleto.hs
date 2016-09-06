@@ -405,7 +405,7 @@ import qualified Database.Persist
 
 -- | @valkey i = 'val' . 'toSqlKey'@
 -- (<https://github.com/prowdsponsor/esqueleto/issues/9>).
-valkey :: (Esqueleto query expr backend, ToBackendKey SqlBackend entity, PersistField (Key entity)) =>
+valkey :: (Esqueleto query expr backend, ToBackendKey SqlBackend entity) =>
           Int64 -> expr (Value (Key entity))
 valkey = val . toSqlKey
 
@@ -430,8 +430,8 @@ valJ = val . unValue
 
 -- | Synonym for 'Database.Persist.Store.delete' that does not
 -- clash with @esqueleto@'s 'delete'.
-deleteKey :: ( PersistStore (PersistEntityBackend val)
+deleteKey :: ( PersistStoreWrite b
              , MonadIO m
-             , PersistEntity val )
-          => Key val -> ReaderT (PersistEntityBackend val) m ()
+             , PersistRecordBackend val b)
+          => Key val -> ReaderT b m ()
 deleteKey = Database.Persist.delete
