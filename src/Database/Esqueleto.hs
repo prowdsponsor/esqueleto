@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, GADTs #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, GADTs, CPP #-}
 -- | The @esqueleto@ EDSL (embedded domain specific language).
 -- This module replaces @Database.Persist@, so instead of
 -- importing that module you should just import this one:
@@ -405,8 +405,13 @@ import qualified Database.Persist
 
 -- | @valkey i = 'val' . 'toSqlKey'@
 -- (<https://github.com/prowdsponsor/esqueleto/issues/9>).
+#if MIN_VERSION_persistent(2,5,0)
+valkey :: (Esqueleto query expr backend, ToBackendKey SqlBackend entity) =>
+          Int64 -> expr (Value (Key entity))
+#else
 valkey :: (Esqueleto query expr backend, ToBackendKey SqlBackend entity, PersistField (Key entity)) =>
           Int64 -> expr (Value (Key entity))
+#endif
 valkey = val . toSqlKey
 
 
@@ -430,8 +435,15 @@ valJ = val . unValue
 
 -- | Synonym for 'Database.Persist.Store.delete' that does not
 -- clash with @esqueleto@'s 'delete'.
+#if MIN_VERSION_persistent(2,5,0)
+deleteKey :: ( PersistStoreWrite b
+             , MonadIO m
+             , PersistRecordBackend val b)
+          => Key val -> ReaderT b m ()
+#else
 deleteKey :: ( PersistStore (PersistEntityBackend val)
              , MonadIO m
              , PersistEntity val )
           => Key val -> ReaderT (PersistEntityBackend val) m ()
+#endif
 deleteKey = Database.Persist.delete

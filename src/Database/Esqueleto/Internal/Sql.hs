@@ -9,6 +9,7 @@
            , UndecidableInstances
            , ScopedTypeVariables
            , InstanceSigs
+           , CPP
  #-}
 -- | This is an internal module, anything exported by this module
 -- may change without a major version bump.  Please use only
@@ -421,8 +422,13 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
   sub_select         = sub SELECT
   sub_selectDistinct = sub_select . distinct
 
+#if MIN_VERSION_persistent(2,5,0)
+  (^.) :: forall val typ. (PersistEntity val)
+       => SqlExpr (Entity val) -> EntityField val typ -> SqlExpr (Value typ)
+#else
   (^.) :: forall val typ. (PersistEntity val, PersistField typ)
        => SqlExpr (Entity val) -> EntityField val typ -> SqlExpr (Value typ)
+#endif
   EEntity ident ^. field
     | isComposite = ECompositeKey $ \info ->  dot info <$> compositeFields pdef
     | otherwise   = ERaw Never    $ \info -> (dot info  $  persistFieldDef field, [])
@@ -530,15 +536,27 @@ instance Esqueleto SqlQuery SqlExpr SqlBackend where
 instance ToSomeValues SqlExpr (SqlExpr (Value a)) where
   toSomeValues a = [SomeValue a]
 
+#if MIN_VERSION_persistent(2,5,0)
+fieldName :: (PersistEntity val)
+          => IdentInfo -> EntityField val typ -> TLB.Builder
+#else
 fieldName :: (PersistEntity val, PersistField typ)
           => IdentInfo -> EntityField val typ -> TLB.Builder
+#endif
 fieldName info = fromDBName info . fieldDB . persistFieldDef
 
 -- FIXME: Composite/non-id pKS not supported on set
+#if MIN_VERSION_persistent(2,5,0)
+setAux :: PersistEntity val
+       => EntityField val typ
+       -> (SqlExpr (Entity val) -> SqlExpr (Value typ))
+       -> SqlExpr (Update val)
+#else
 setAux :: (PersistEntity val, PersistField typ)
        => EntityField val typ
        -> (SqlExpr (Entity val) -> SqlExpr (Value typ))
        -> SqlExpr (Update val)
+#endif
 setAux field mkVal = ESet $ \ent -> unsafeSqlBinOp " = " name (mkVal ent)
   where name = ERaw Never $ \info -> (fieldName info field, mempty)
 
