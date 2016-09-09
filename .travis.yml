@@ -22,6 +22,8 @@ matrix:
       addons: {apt: {packages: [libgmp-dev]}}
     - env: STACK=STACK ARGS="--resolver nightly"
       addons: {apt: {packages: [libgmp-dev]}}
+    - env: CABALVER=head GHCVER=head
+      addons: {apt: {packages: [cabal-install-head,ghc-head],  sources: [hvr-ghc]}}
 
   allow_failures:
    - env: CABALVER=head GHCVER=head
