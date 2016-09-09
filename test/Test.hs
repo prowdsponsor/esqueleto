@@ -1395,11 +1395,18 @@ main = do
 ----------------------------------------------------------------------
 
 
+#if MIN_VERSION_persistent(2,5,0)
+insert' :: ( PersistStoreWrite b
+           , MonadIO m
+           , PersistRecordBackend val b)
+        => val -> ReaderT b m (Entity val)
+#else
 insert' :: ( Functor m
            , PersistStore (PersistEntityBackend val)
            , MonadIO m
            , PersistEntity val )
         => val -> ReaderT (PersistEntityBackend val) m (Entity val)
+#endif
 insert' v = flip Entity v <$> insert v
 
 

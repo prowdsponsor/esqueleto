@@ -1,0 +1,95 @@
+language: c
+
+sudo: false
+
+matrix:
+  include:
+    - env: STACK=STACK ARGS=""
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-1"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-2"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-3"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-4"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-5"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-6"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver nightly"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: CABALVER=head GHCVER=head
+      addons: {apt: {packages: [cabal-install-head,ghc-head],  sources: [hvr-ghc]}}
+
+  allow_failures:
+   - env: CABALVER=head GHCVER=head
+
+before_install:
+ - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+
+install:
+ - |
+    set -e
+    if [ -z "$STACK" ]; then
+      export PATH=/home/travis/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+
+      echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+      cabal update
+
+    else
+      travis_retry curl -o stack.tar.gz -L https://www.stackage.org/stack/linux-x86_64
+      mkdir ./stack
+      tar -xf stack.tar.gz -C ./stack --strip-components=1
+      export PATH=$PATH:./stack/
+
+      echo "Stack $(stack --version)"
+      stack update
+    fi
+
+script:
+ - |
+    set -e
+    if [ -n "$STACK" ]; then
+      echo -e "\033[0;32mstack setup.\033[0m"
+      stack $ARGS --no-terminal setup
+
+      echo -e "\033[0;32mstack build.\033[0m"
+      stack $ARGS --no-terminal build
+
+      echo -e "\033[0;32mstack test.\033[0m"
+      stack $ARGS --no-terminal test
+
+    else
+      cabal --version
+      ghc --version
+
+      echo -e "\033[0;32mcabal install only deps.\033[0m"
+      cabal install --only-dependencies --enable-tests
+
+      echo -e "\033[0;32mcabal config with tests.\033[0m"
+      cabal configure --enable-tests
+
+      echo -e "\033[0;32mcabal build.\033[0m"
+      cabal build
+
+      echo -e "\033[0;32mcabal test.\033[0m"
+      cabal test
+
+      echo -e "\033[0;32mcabal check.\033[0m"
+      cabal check
+
+      echo -e "\033[0;32mcabal sdist.\033[0m"
+      cabal sdist
+
+      echo -e "\033[0;32mcabal install tarball.\033[0m"
+      cabal install --force-reinstalls dist/*-*.tar.gz
+    fi
+cache:
+  directories:
+  - $HOME/.stack
+  - $HOME/.cabal
+

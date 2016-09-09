@@ -7,6 +7,7 @@
            , TypeFamilies
            , UndecidableInstances
            , GADTs
+           , CPP
  #-}
 -- | This is an internal module, anything exported by this module
 -- may change without a major version bump.  Please use only
@@ -52,7 +53,6 @@ import Database.Esqueleto.Internal.PersistentImport
 import Text.Blaze.Html (Html)
 
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 
@@ -299,8 +299,13 @@ class (Functor query, Applicative query, Monad query) =>
   sub_selectDistinct :: PersistField a => query (expr (Value a)) -> expr (Value a)
 
   -- | Project a field of an entity.
+#if MIN_VERSION_persistent(2,5,0)
+  (^.) :: (PersistEntity val) =>
+          expr (Entity val) -> EntityField val typ -> expr (Value typ)
+#else
   (^.) :: (PersistEntity val, PersistField typ) =>
           expr (Entity val) -> EntityField val typ -> expr (Value typ)
+#endif
 
   -- | Project a field of an entity that may be null.
   (?.) :: (PersistEntity val, PersistField typ) =>
