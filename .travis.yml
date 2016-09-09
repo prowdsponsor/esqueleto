@@ -4,34 +4,24 @@ sudo: false
 
 matrix:
   include:
-    - env: CABALVER=1.18 GHCVER=7.8.1
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.18,ghc-7.8.1], sources: [hvr-ghc]}}
-    - env: CABALVER=1.18 GHCVER=7.8.2
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.18,ghc-7.8.2], sources: [hvr-ghc]}}
-    - env: CABALVER=1.18 GHCVER=7.8.3
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.18,ghc-7.8.3], sources: [hvr-ghc]}}
-    - env: CABALVER=1.18 GHCVER=7.8.4
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.18,ghc-7.8.4], sources: [hvr-ghc]}}
-    - env: CABALVER=1.22 GHCVER=7.10.1
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.22,ghc-7.10.1],sources: [hvr-ghc]}}
-    - env: CABALVER=1.22 GHCVER=7.10.2
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.22,ghc-7.10.2],sources: [hvr-ghc]}}
-    - env: CABALVER=1.22 GHCVER=7.10.3
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.22,ghc-7.10.3],sources: [hvr-ghc]}}
-    - env: CABALVER=1.24 GHCVER=8.0.1
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-1.24,ghc-8.0.1],sources: [hvr-ghc]}}
-    - env: CABALVER=head GHCVER=head
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,cabal-install-head,ghc-head],  sources: [hvr-ghc]}}
     - env: STACK=STACK ARGS=""
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,libgmp-dev]}}
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-1"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-2"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-3"
+      addons: {apt: {packages: [libgmp-dev]}}
     - env: STACK=STACK ARGS="--resolver lts-4"
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,libgmp-dev]}}
+      addons: {apt: {packages: [libgmp-dev]}}
     - env: STACK=STACK ARGS="--resolver lts-5"
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,libgmp-dev]}}
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: STACK=STACK ARGS="--resolver lts-6"
+      addons: {apt: {packages: [libgmp-dev]}}
     - env: STACK=STACK ARGS="--resolver lts"
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,libgmp-dev]}}
+      addons: {apt: {packages: [libgmp-dev]}}
     - env: STACK=STACK ARGS="--resolver nightly"
-      addons: {apt: {packages: [sqlite3,libsqlite3-dev,libgmp-dev]}}
+      addons: {apt: {packages: [libgmp-dev]}}
 
   allow_failures:
    - env: CABALVER=head GHCVER=head
