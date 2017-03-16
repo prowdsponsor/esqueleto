@@ -858,7 +858,7 @@ main = do
             act
       it "works on a slightly less simple example (distinctOnOrderBy)" $ do
         slightlyLessSimpleTest $ \bp ->
-          distinctOnOrderBy [asc (bp ^. BlogPostAuthorId), asc (bp ^. BlogPostTitle)]
+          distinctOnOrderBy [asc (bp ^. BlogPostAuthorId), asc (bp ^. BlogPostTitle)] []
 #endif
 
     describe "coalesce/coalesceDefault" $ do

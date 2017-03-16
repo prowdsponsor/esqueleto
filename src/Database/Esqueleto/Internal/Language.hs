@@ -240,6 +240,7 @@ class (Functor query, Applicative query, Monad query) =>
   -- ON@ to be the first ones to appear on a @ORDER BY@.  This is
   -- not managed automatically by esqueleto, keeping its spirit
   -- of trying to be close to raw SQL.
+  -- However, there is a convenience function `distinctOnOrderBy`
   --
   -- Supported by PostgreSQL only.
   --
@@ -256,20 +257,20 @@ class (Functor query, Applicative query, Monad query) =>
   -- 'orderBy'.  In other words,
   --
   -- @
-  -- 'distinctOnOrderBy' [asc foo, desc bar, desc quux] $ do
+  -- 'distinctOnOrderBy' [asc foo, desc bar] [desc quux] $ do
   --   ...
   -- @
   --
   -- is the same as:
   --
   -- @
-  -- 'distinctOn' [don foo, don  bar, don  quux] $ do
+  -- 'distinctOn' [don foo, don  bar] $ do
   --   'orderBy'  [asc foo, desc bar, desc quux]
   --   ...
   -- @
   --
   -- /Since: 2.2.4/
-  distinctOnOrderBy :: [expr OrderBy] -> query a -> query a
+  distinctOnOrderBy :: [expr OrderBy] -> [expr OrderBy] -> query a -> query a
 
   -- | @ORDER BY random()@ clause.
   --
